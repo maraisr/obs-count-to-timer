@@ -3,6 +3,7 @@ obs = obslua
 -- Tracking settings
 source_name = "" -- The name of the source we are populating
 count_till = "" -- The time in 24hr till we want to count
+pettern = "$min:$sec" -- The text format
 
 activated = false -- Should be counting down
 
@@ -32,6 +33,16 @@ string.split = function(str, pat, limit)
     end
 
     return t
+end
+
+function get_source_text_with_pattern(mm, ss)
+    local p_format = pattern;
+
+    if p_format == nil then
+        p_format = "$min:$sec";
+    end
+
+    return pattern:gsub("%$(%w+)", { min = mm, sec = ss });
 end
 
 function set_text_on_source(value, source_name)
@@ -65,7 +76,7 @@ function get_internal_value()
 
     if (now > future) then
         activate(false)
-        set_text_on_source("00:00", source_name)
+        set_text_on_source(get_source_text_with_pattern("00", "00"), source_name)
         return false
     end
 
@@ -74,7 +85,7 @@ function get_internal_value()
     local d_mins = math.floor((delta - (d_hours * 3600)) / 60)
     local d_seconds = delta - (d_hours * 3600) - (d_mins * 60)
 
-    set_text_on_source(string.format("%02d:%02d", d_mins, d_seconds), source_name)
+    set_text_on_source(get_source_text_with_pattern(string.format("%02d", d_mins), string.format("%02d", d_seconds)), source_name)
     return true
 end
 
@@ -116,6 +127,7 @@ function script_properties()
     local setup_props = obs.obs_properties_create()
 
     obs.obs_properties_add_text(controls_props, "end_time", "Countdown to (hh:mm)", obs.OBS_TEXT_DEFAULT)
+    obs.obs_properties_add_text(controls_props, "pattern", "Text pattern (default: $min:$sec)", obs.OBS_TEXT_DEFAULT)
 
     obs.obs_properties_add_button(controls_props, "start_button", "Start", function() activate(true) end)
     obs.obs_properties_add_button(controls_props, "stop_button", "Stop", function() activate(false) end)
@@ -187,6 +199,7 @@ function script_update(settings)
     activate(false)
     count_till = obs.obs_data_get_string(settings, "end_time")
     source_name = obs.obs_data_get_string(settings, "source")
+    pattern = obs.obs_data_get_string(settings, "pattern")
 end
 
 -- A function named script_save will be called when the script is saved
